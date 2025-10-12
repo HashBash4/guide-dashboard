@@ -1,0 +1,83 @@
+html, body {
+            height: 100%;
+            margin: 0;
+            font-family: "Arial", sans-serif;
+            background-color: #f7f9fb;
+        }
+        .main-container {
+            display: grid;
+            grid-template-rows: 13% 8% 79%;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .header {
+            background: #e6f0fa;
+            border-radius: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        .device-load {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 15px;
+            height: 100%;
+        }
+        .feature-box {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+
+
+
+        /* --- RAG Indicator Styles --- */
+        .rag-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+        }
+
+        .rag-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .rag-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-bottom: 8px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.4s ease;
+        }
+
+        /* Color classes */
+        .rag-dot.green { background-color: #3CB371; }   /* mediumseagreen */
+        .rag-dot.amber { background-color: #FFB347; }   /* orange */
+        .rag-dot.red   { background-color: #DC143C; }   /* crimson */
