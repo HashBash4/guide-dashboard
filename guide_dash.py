@@ -8,6 +8,7 @@ import plotly.express as px
 import pandas as pd
 from csiro_api import get_latest_intensity
 from utils.rag_helpers import get_rag_color_label, rag_display
+from openelectricity_api import get_electricity_mix
 from datetime import datetime
 import dash_bootstrap_components as dbc
 
@@ -88,14 +89,16 @@ app.layout = html.Div([
 
     # Main 2×3 Grid (79%)
     html.Div([
+
+        # Grid intensity
         html.Div([
-        #html.H5("Current Grid Carbon Intensity (NSW)"),
-        dcc.Loading(  # spinner while fetching
-        html.Div(id="rag_indicator", className="rag-box")
-        )
-    ], className="feature-box"),
+            #html.H5("Current Grid Carbon Intensity (NSW)"),
+            dcc.Loading(  # spinner while fetching
+                html.Div(id="rag_indicator", className="rag-box")
+            )
+        ], className="feature-box"),
 
-
+        # Weather
         html.Div([html.P("ANALYSIS", style={"font-size": "14px"}),
                           html.H5("Current Weather Classification"),
                           html.Br(),
@@ -104,18 +107,31 @@ app.layout = html.Div([
                           html.Div([radio_buttons("cloudiness", ["clear", "partly cloudy", "overcast"], "partly cloudy")], style={"margin-bottom": "8px"})
                   ], className="feature-box"),
 
-        html.Div([html.H4("Recommendation")], className="feature-box"),
-        html.Div([html.H4("Current Grid Mix")], className="feature-box"),
+        # Recommendation
+        html.Div([
+            html.H4("Recommendation")
+        ], className="feature-box"),
 
-        html.Div([html.H5("Daily Carbon Intensity Trend"),
-                          html.P("This chart shows the typical hourly pattern of carbon intensity, "
-                                         "calculated from past days with weather conditions similar to today",
-                                         style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+        # Current grid mix
+        html.Div([
+            html.H5("Current Grid Mix"),
+            dcc.Graph(id="grid_mix")
+        ], className="feature-box"),
 
-    dcc.Graph(id="line_graph", style={"height": "300px", "width": "90%"})
-                  ], className="feature-box"),
+        # Carbon intensity trend
+        html.Div([
+            html.H5("Daily Carbon Intensity Trend"),
+            html.P("This chart shows the typical hourly pattern of carbon intensity, "
+                            "calculated from past days with weather conditions similar to today",
+                            style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+            dcc.Graph(id="line_graph", style={"height": "300px", "width": "90%"})
+        ], className="feature-box"),
 
-        html.Div([html.H4("User Impact Summary")], className="feature-box")
+        # User impact summary
+        html.Div([
+            html.H4("User Impact Summary")
+        ], className="feature-box")
+
     ], className="grid-container"),
 
     # 🔁 Auto-refresh every 5 minutes
@@ -309,6 +325,51 @@ def update_line_graph(temp_selection, wind_selection, cloud_selection):
         height=250,
         margin=dict(l=10, r=10, t=50, b=10))
     return fig_line_graph
+
+######################### Grid mix ##########################
+
+@app.callback(
+    Output("grid_mix", "figure"),
+    Input("refresh", "n_intervals")
+)
+def update_grid_mix(_):
+    print("↻ Grid mix refresh triggered")
+
+    # Fetch
+    mix = get_electricity_mix() or {}   # expected: { "power_coal": {"timestamp": "...", "value": 123.4}, ... }
+
+    DESIRED_FUELS = {"wind", "solar", "hydro", "coal", "gas"}
+    rows = []
+    for name, payload in mix.items():
+        # "power_solar" -> "solar"
+        label = name.removeprefix("power_")
+        if label in DESIRED_FUELS:
+            val = payload.get("value")
+            if val is not None:
+                rows.append({"fueltech": label, "value": float(val)})
+
+
+    if not rows:
+        empty = pd.DataFrame({ "fueltech": [], "value": [] })
+        return px.bar(
+            empty, x="value", y="fueltech", orientation="h", title="No data"
+        )
+
+    # Build DF and sort
+    df = pd.DataFrame(rows).sort_values("value", ascending=True, ignore_index=True)
+        
+    fig = px.bar(
+        df,
+        x="value",
+        y="fueltech",
+        orientation="h",
+        labels={"value": "MW", "fueltech": "Fueltech"},
+        title="",
+        width = 400
+    )
+    fig.update_yaxes(title="")
+
+    return fig
 
 ######################   Run the APP     ############################################################
 
