@@ -8,6 +8,7 @@ import plotly.express as px
 import pandas as pd
 from csiro_api import get_latest_intensity
 from utils.rag_helpers import get_rag_color_label, rag_display
+from openelectricity_api import get_electricity_mix
 from datetime import datetime
 import dash_bootstrap_components as dbc
 
@@ -108,12 +109,13 @@ app.layout = html.Div([
 
         # Recommendation
         html.Div([
-                html.H4("Recommendation")
+            html.H4("Recommendation")
         ], className="feature-box"),
 
         # Current grid mix
         html.Div([
-            html.H4("Current Grid Mix")
+            html.H5("Current Grid Mix"),
+            dcc.Graph(id="grid_mix")
         ], className="feature-box"),
 
         # Carbon intensity trend
@@ -323,6 +325,51 @@ def update_line_graph(temp_selection, wind_selection, cloud_selection):
         height=250,
         margin=dict(l=10, r=10, t=50, b=10))
     return fig_line_graph
+
+######################### Grid mix ##########################
+
+@app.callback(
+    Output("grid_mix", "figure"),
+    Input("refresh", "n_intervals")
+)
+def update_grid_mix(_):
+    print("↻ Grid mix refresh triggered")
+
+    # Fetch
+    mix = get_electricity_mix() or {}   # expected: { "power_coal": {"timestamp": "...", "value": 123.4}, ... }
+
+    DESIRED_FUELS = {"wind", "solar", "hydro", "coal", "gas"}
+    rows = []
+    for name, payload in mix.items():
+        # "power_solar" -> "solar"
+        label = name.removeprefix("power_")
+        if label in DESIRED_FUELS:
+            val = payload.get("value")
+            if val is not None:
+                rows.append({"fueltech": label, "value": float(val)})
+
+
+    if not rows:
+        empty = pd.DataFrame({ "fueltech": [], "value": [] })
+        return px.bar(
+            empty, x="value", y="fueltech", orientation="h", title="No data"
+        )
+
+    # Build DF and sort
+    df = pd.DataFrame(rows).sort_values("value", ascending=True, ignore_index=True)
+        
+    fig = px.bar(
+        df,
+        x="value",
+        y="fueltech",
+        orientation="h",
+        labels={"value": "MW", "fueltech": "Fueltech"},
+        title="",
+        width = 400
+    )
+    fig.update_yaxes(title="")
+
+    return fig
 
 ######################   Run the APP     ############################################################
 
