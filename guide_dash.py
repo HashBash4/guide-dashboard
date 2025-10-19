@@ -9,7 +9,7 @@ import pandas as pd
 from csiro_api import get_latest_intensity
 from utils.rag_helpers import get_rag_color_label, rag_display
 from datetime import datetime
-
+import dash_bootstrap_components as dbc
 
 
 
@@ -22,8 +22,21 @@ from datetime import datetime
 
 ############################   LAYOUT   #########################################
 
-app = Dash(__name__, suppress_callback_exceptions=True)
+app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
+def radio_buttons(_id, options, default):
+    return html.Div(
+        dbc.RadioItems(
+            id=_id,
+            options=[{"label": o.capitalize(), "value": o} for o in options],
+            value=default,
+            inline=True,
+            inputClassName="btn-check",
+            inputCheckedClassName="btn-check",
+            labelClassName="btn btn-outline-secondary me-0",
+            labelCheckedClassName="btn btn-primary me-0",
+            labelStyle={"width": "110px", "text-align": "center", "fontSize": "14px"}),
+        className="btn-group", role="group")
 
 app.layout = html.Div([
      # ===== HEADER BAR =====
@@ -83,10 +96,25 @@ app.layout = html.Div([
     ], className="feature-box"),
 
 
-        html.Div([html.H4("Weather Conditions")], className="feature-box"),
+        html.Div([html.P("ANALYSIS", style={"font-size": "14px"}),
+                          html.H5("Current Weather Classification"),
+                          html.Br(),
+                          html.Div([radio_buttons("temperature", ["hot", "mild", "cold"], "hot")], style={"margin-bottom": "8px"}),
+                          html.Div([radio_buttons("wind_speed", ["windy", "breezy", "calm"], "calm")], style={"margin-bottom": "8px"}),
+                          html.Div([radio_buttons("cloudiness", ["clear", "partly cloudy", "overcast"], "partly cloudy")], style={"margin-bottom": "8px"})
+                  ], className="feature-box"),
+
         html.Div([html.H4("Recommendation")], className="feature-box"),
         html.Div([html.H4("Current Grid Mix")], className="feature-box"),
-        html.Div([html.H4("Carbon Intensity Trends")], className="feature-box"),
+
+        html.Div([html.H5("Daily Carbon Intensity Trend"),
+                          html.P("This chart shows the typical hourly pattern of carbon intensity, "
+                                         "calculated from past days with weather conditions similar to today",
+                                         style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+
+    dcc.Graph(id="line_graph", style={"height": "300px", "width": "90%"})
+                  ], className="feature-box"),
+
         html.Div([html.H4("User Impact Summary")], className="feature-box")
     ], className="grid-container"),
 
@@ -217,8 +245,70 @@ def update_intensity(_):
             style={"color": "gray"}
         )
 
+######################### Daily Carbon Intensity Trend ##########################
+df_carbon = pd.read_csv("historic_carbon_intensity_data.csv")
+df_weather = pd.read_csv("historic_weather_data_sydney.csv")
 
+df_carbon["datetime"] = (pd.to_datetime(df_carbon["datetime"].astype(str).str.strip(),
+                        errors="coerce", utc=True).dt.tz_convert("Australia/Sydney").dt.tz_localize(None))
+df_carbon["datetime_local"] = df_carbon["datetime"].dt.strftime("%Y-%m-%d %H:%M:%S")
+df_weather["datetime_local"] = pd.to_datetime(df_weather["datetime_local"].astype(str).str.strip(),
+                            errors="coerce", dayfirst=True).dt.strftime("%Y-%m-%d %H:%M:%S")
 
+df_weather_carbon_merged = df_weather.merge(df_carbon[["datetime_local", "intensity_gCO2_per_kWh"]], on="datetime_local", how="left")
+df_weather_carbon_merged["intensity_gCO2_per_kWh"] = df_weather_carbon_merged["intensity_gCO2_per_kWh"].fillna("NaN")
+df_weather_carbon_merged = df_weather_carbon_merged[df_weather_carbon_merged["intensity_gCO2_per_kWh"] != "NaN"]
+
+df_weather_carbon_merged["datetime_local"] = pd.to_datetime(df_weather_carbon_merged["datetime_local"], errors="coerce")
+df_weather_carbon_merged["date"] = df_weather_carbon_merged["datetime_local"].dt.date
+df_weather_carbon_merged["hour"] = df_weather_carbon_merged["datetime_local"].dt.hour
+
+columns = ["temperature_2m_C", "wind_speed_10m_kmh", "cloud_cover_pct"]
+for c in columns:
+    q1, q2 = df_weather_carbon_merged[c].quantile([1/3, 2/3])
+    df_weather_carbon_merged[f"{c}_category"] = pd.cut(df_weather_carbon_merged[c],
+        bins=[-float("inf"), q1, q2, float("inf")], labels=["Low", "Medium", "High"])
+
+df_weather_carbon_merged["temperature_2m_C_category"] = (df_weather_carbon_merged["temperature_2m_C_category"]
+                                                         .replace({"Low": "cold", "Medium": "mild", "High": "hot"}))
+df_weather_carbon_merged["wind_speed_10m_kmh_category"] = (df_weather_carbon_merged["wind_speed_10m_kmh_category"]
+                                                           .replace({"Low": "calm", "Medium": "breezy", "High": "windy"}))
+df_weather_carbon_merged["cloud_cover_pct_category"] = (df_weather_carbon_merged["cloud_cover_pct_category"]
+                                                        .replace({"Low": "clear", "Medium": "partly cloudy", "High": "overcast"}))
+
+# df_weather_carbon_merged.to_csv("historic_weather_carbon_data_merged.csv", index=False)
+
+@app.callback(
+    Output("line_graph", "figure"),
+    Input("temperature", "value"),
+    Input("wind_speed", "value"),
+    Input("cloudiness", "value"))
+def update_line_graph(temp_selection, wind_selection, cloud_selection):
+    df_weather_carbon_merged_filtered = df_weather_carbon_merged[
+        (df_weather_carbon_merged["temperature_2m_C_category"] == temp_selection) &
+        (df_weather_carbon_merged["wind_speed_10m_kmh_category"] == wind_selection) &
+        (df_weather_carbon_merged["cloud_cover_pct_category"] == cloud_selection)].sort_values("hour")
+
+    df_weather_carbon_merged_filtered_average = (
+        df_weather_carbon_merged_filtered.groupby("hour", as_index=False)["intensity_gCO2_per_kWh"].mean()
+        .rename(columns={"intensity_gCO2_per_kWh": "intensity_gCO2_per_kWh_average"}))
+
+    if df_weather_carbon_merged_filtered_average.empty:
+        fig_line_graph = px.line(title=f"No data for: {temp_selection}, {wind_selection}, {cloud_selection}")
+    else:
+        fig_line_graph = px.line(df_weather_carbon_merged_filtered_average,
+        x="hour", y="intensity_gCO2_per_kWh_average", markers=True)
+
+    fig_line_graph.update_layout(
+        template="plotly_white",
+        xaxis_title="Hour of Day",
+        yaxis_title="Average Carbon Intensity (gCO2/kWh)",
+        xaxis_title_font=dict(size=10),
+        yaxis_title_font=dict(size=10),
+        hovermode="x unified",
+        height=250,
+        margin=dict(l=10, r=10, t=50, b=10))
+    return fig_line_graph
 
 ######################   Run the APP     ############################################################
 
