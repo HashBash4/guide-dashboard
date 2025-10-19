@@ -88,14 +88,16 @@ app.layout = html.Div([
 
     # Main 2×3 Grid (79%)
     html.Div([
+
+        # Grid intensity
         html.Div([
-        #html.H5("Current Grid Carbon Intensity (NSW)"),
-        dcc.Loading(  # spinner while fetching
-        html.Div(id="rag_indicator", className="rag-box")
-        )
-    ], className="feature-box"),
+            #html.H5("Current Grid Carbon Intensity (NSW)"),
+            dcc.Loading(  # spinner while fetching
+                html.Div(id="rag_indicator", className="rag-box")
+            )
+        ], className="feature-box"),
 
-
+        # Weather
         html.Div([html.P("ANALYSIS", style={"font-size": "14px"}),
                           html.H5("Current Weather Classification"),
                           html.Br(),
@@ -104,18 +106,30 @@ app.layout = html.Div([
                           html.Div([radio_buttons("cloudiness", ["clear", "partly cloudy", "overcast"], "partly cloudy")], style={"margin-bottom": "8px"})
                   ], className="feature-box"),
 
-        html.Div([html.H4("Recommendation")], className="feature-box"),
-        html.Div([html.H4("Current Grid Mix")], className="feature-box"),
+        # Recommendation
+        html.Div([
+                html.H4("Recommendation")
+        ], className="feature-box"),
 
-        html.Div([html.H5("Daily Carbon Intensity Trend"),
-                          html.P("This chart shows the typical hourly pattern of carbon intensity, "
-                                         "calculated from past days with weather conditions similar to today",
-                                         style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+        # Current grid mix
+        html.Div([
+            html.H4("Current Grid Mix")
+        ], className="feature-box"),
 
-    dcc.Graph(id="line_graph", style={"height": "300px", "width": "90%"})
-                  ], className="feature-box"),
+        # Carbon intensity trend
+        html.Div([
+            html.H5("Daily Carbon Intensity Trend"),
+            html.P("This chart shows the typical hourly pattern of carbon intensity, "
+                            "calculated from past days with weather conditions similar to today",
+                            style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+            dcc.Graph(id="line_graph", style={"height": "300px", "width": "90%"})
+        ], className="feature-box"),
 
-        html.Div([html.H4("User Impact Summary")], className="feature-box")
+        # User impact summary
+        html.Div([
+            html.H4("User Impact Summary")
+        ], className="feature-box")
+
     ], className="grid-container"),
 
     # 🔁 Auto-refresh every 5 minutes
