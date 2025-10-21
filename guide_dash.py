@@ -157,7 +157,8 @@ app.layout = html.Div([
 
         # Recommendation
         html.Div([
-            html.H4("Recommendation")
+            html.H5("Recommendation"),
+            html.P(id="recommendation_data")
         ], className="feature-box"),
 
         # Current grid mix
@@ -491,6 +492,23 @@ def update_grid_mix(_):
     fig.update_yaxes(automargin=True)
 
     return fig
+
+######################### Recommendation Data Callback ##########################
+
+# Placeholder just to wire through the device/duration data
+
+@app.callback(
+    Output("recommendation_data", "children"),
+    Input("device_dropdown", "value"),
+    Input("duration_dropdown", "value")
+)
+def update_recommendation_data(device_value, duration):
+    # Parse device value to extract name and kW
+    device_name, kw_str = device_value.split("|")
+    kw = float(kw_str)
+    
+    # Display to test it is wired through
+    return f"Device={device_name}, Load={kw}kW, Duration={duration}hrs"
 
 ######################   Run the APP     ############################################################
 
