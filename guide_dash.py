@@ -115,7 +115,7 @@ app.layout = html.Div([
         # Current grid mix
         html.Div([
             html.H5("Current Grid Mix"),
-            dcc.Graph(id="grid_mix")
+            dcc.Graph(id="grid_mix", style={"width": "100%", "height": "100%"}, config={"responsive": True})
         ], className="feature-box"),
 
         # Carbon intensity trend
@@ -348,26 +348,84 @@ def update_grid_mix(_):
             if val is not None:
                 rows.append({"fueltech": label, "value": float(val)})
 
-
     if not rows:
         empty = pd.DataFrame({ "fueltech": [], "value": [] })
         return px.bar(
             empty, x="value", y="fueltech", orientation="h", title="No data"
         )
 
-    # Build DF and sort
-    df = pd.DataFrame(rows).sort_values("value", ascending=True, ignore_index=True)
-        
+    # Build DF
+    df = pd.DataFrame(rows)
+    
+    # Calculate total and percentages
+    total_power = df["value"].sum()
+    df["percentage"] = (df["value"] / total_power * 100).round(1)
+    
+    # Define custom order: renewables first, then fossil fuels
+    fuel_order = ["solar", "wind", "hydro", "coal", "gas"]
+    df["fueltech"] = pd.Categorical(df["fueltech"], categories=fuel_order, ordered=True)
+    df = df.sort_values("fueltech").reset_index(drop=True)
+    
+    # Title case the labels
+    df["fueltech_display"] = df["fueltech"].str.title()
+    
+    # Define colors: green shades for renewables, grays/browns for fossil fuels
+    color_map = {
+        "Solar": "#FDB462",    # Orange/yellow for solar
+        "Wind": "#80B1D3",     # Light blue for wind
+        "Hydro": "#8DD3C7",    # Teal for hydro
+        "Coal": "#999999",     # Dark gray for coal
+        "Gas": "#BEBADA"       # Purple-gray for gas
+    }
+    
+    # Create text labels showing MW and percentage
+    df["text_label"] = df.apply(
+        lambda row: f"{row['percentage']:.1f}%", # Removed MW value: row['value']:.0f} MW
+        axis=1
+    )
+    
     fig = px.bar(
         df,
         x="value",
-        y="fueltech",
+        y="fueltech_display",
         orientation="h",
-        labels={"value": "MW", "fueltech": "Fueltech"},
-        title="",
-        width = 400
+        color="fueltech_display",
+        color_discrete_map=color_map,
+        text="text_label",
+        title=""
     )
-    fig.update_yaxes(title="")
+    
+    # Update layout for cleaner appearance
+    fig.update_traces(
+        textposition="inside",
+        textfont=dict(size=11, color="white", family="Arial"),
+        insidetextanchor="end",  # Align text to the right (end) of the bar
+        textangle=0  # Keep text horizontal
+    )
+    
+    fig.update_layout(
+        showlegend=False,
+        xaxis_title="Megawatts (MW)",
+        yaxis_title="",
+        xaxis_title_font=dict(size=10),
+        height=300,
+        margin=dict(l=10, r=10, t=10, b=10),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=0.5
+        ),
+        yaxis=dict(
+            tickfont=dict(size=12, family="Arial")
+        ),
+        autosize=True  # Allow the figure to resize dynamically
+    )
+    
+    # Remove any fixed width constraints
+    fig.update_xaxes(automargin=True)
+    fig.update_yaxes(automargin=True)
 
     return fig
 
