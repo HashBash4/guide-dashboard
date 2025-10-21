@@ -84,8 +84,56 @@ app.layout = html.Div([
 
     # Device/Load Section
     html.Div([
-        html.H4("Select Appliance and Duration")
-    ], className="device-load"),
+        html.Div([
+            html.Label("Run appliance:", style={"fontWeight": "bold", "marginBottom": "5px"}),
+            dcc.Dropdown(
+                id="device_dropdown",
+                options=[
+                    {"label": "Charge EV", "value": "Charge EV|7"},
+                    {"label": "A/C", "value": "A/C|1.5"},
+                    {"label": "Washing machine", "value": "Washing machine|0.8"},
+                    {"label": "Clothes dryer", "value": "Clothes dryer|2"},
+                    {"label": "Dish washer", "value": "Dish washer|1.2"},
+                    {"label": "Oven", "value": "Oven|2"},
+                    {"label": "Induction cooktop", "value": "Induction cooktop|2"},
+                    {"label": "Hot water heat pump", "value": "Hot water heat pump|1"}
+                ],
+                value="Charge EV|7",
+                clearable=False,
+                style={"width": "200px"}
+            )
+        ], style={"display": "flex", "flexDirection": "column", "marginRight": "20px"}),
+        
+        html.Div([
+            html.Label("Duration:", style={"fontWeight": "bold", "marginBottom": "5px"}),
+            dcc.Dropdown(
+                id="duration_dropdown",
+                options=[
+                    {"label": "0.5 hours", "value": 0.5},
+                    {"label": "1 hour", "value": 1},
+                    {"label": "2 hours", "value": 2},
+                    {"label": "4 hours", "value": 4},
+                    {"label": "6 hours", "value": 6},
+                    {"label": "8 hours", "value": 8}
+                ],
+                value=1,
+                clearable=False,
+                style={"width": "150px"}
+            )
+        ], style={"display": "flex", "flexDirection": "column", "marginRight": "20px"}),
+        
+        html.Div([
+            html.P(id="load_summary", style={
+                "fontSize": "16px",
+                "fontWeight": "500",
+                "margin": "0",
+                "padding": "10px 20px",
+                "backgroundColor": "#e6f0fa",
+                "borderRadius": "8px",
+                "alignSelf": "center"
+            })
+        ], style={"display": "flex", "alignItems": "center"})
+    ], className="device-load", style={"display": "flex", "alignItems": "flex-end", "justifyContent": "flex-start"}),
 
     # Main 2×3 Grid (79%)
     html.Div([
@@ -156,6 +204,21 @@ def update_clock(_):
     date_str = now.strftime("%d/%m/%Y")
     time_str = now.strftime("%H:%M:%S")
     return date_str, time_str
+
+######################### Load Summary Callback ##########################
+
+@app.callback(
+    Output("load_summary", "children"),
+    Input("device_dropdown", "value"),
+    Input("duration_dropdown", "value")
+)
+def update_load_summary(device_value, duration):
+    # Parse device value to extract name and kW
+    device_name, kw_str = device_value.split("|")
+    kw = float(kw_str)
+    
+    # Format the summary text
+    return f"Representative load: {kw}kW, {duration}hrs"
 
 ######################### RAG Indicator and current Carbon Intensity ##########################
 @app.callback(
