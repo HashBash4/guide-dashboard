@@ -115,7 +115,7 @@ app.layout = html.Div([
         # Current grid mix
         html.Div([
             html.H5("Current Grid Mix"),
-            dcc.Graph(id="grid_mix")
+            dcc.Graph(id="grid_mix", style={"width": "100%", "height": "100%"}, config={"responsive": True})
         ], className="feature-box"),
 
         # Carbon intensity trend
@@ -420,8 +420,12 @@ def update_grid_mix(_):
         yaxis=dict(
             tickfont=dict(size=12, family="Arial")
         ),
+        autosize=True  # Allow the figure to resize dynamically
     )
     
+    # Remove any fixed width constraints
+    fig.update_xaxes(automargin=True)
+    fig.update_yaxes(automargin=True)
 
     return fig
 
