@@ -495,9 +495,82 @@ def update_grid_mix(_):
 
 ######################### Recommendation Data Callback ##########################
 
-# Placeholder just to wire through the device/duration data
 
 @app.callback(
+    Output("recommendation_data", "children"),
+    [
+        Input("device_dropdown", "value"),
+        Input("duration_dropdown", "value"),
+        Input("temperature", "value"),
+        Input("wind_speed", "value"),
+        Input("cloudiness", "value"),
+        Input("rag_indicator", "children")  # triggers update when API refreshes
+    ],
+)
+def update_recommendation_data(device_value, duration, temp_selection, wind_selection, cloud_selection, _):
+    """
+    Provides a simple recommendation based on forecasted carbon intensity.
+    If the forecast drops ≥30% for ≥2 consecutive hours, show the time window.
+    Otherwise, state that load shifting offers no significant benefit today.
+    """
+
+    try:
+        # --- Get current grid carbon intensity
+        ts, current_intensity = get_latest_intensity()
+
+        # --- Filter historic data for selected weather pattern
+        df_filtered = df_weather_carbon_merged[
+            (df_weather_carbon_merged["temperature_2m_C_category"] == temp_selection) &
+            (df_weather_carbon_merged["wind_speed_10m_kmh_category"] == wind_selection) &
+            (df_weather_carbon_merged["cloud_cover_pct_category"] == cloud_selection)
+        ].sort_values("hour")
+
+        # --- Calculate hourly mean intensity
+        hourly_avg = (
+            df_filtered.groupby("hour", as_index=False)["intensity_gCO2_per_kWh"].mean()
+        )
+
+        # --- Identify ≥30% lower values lasting ≥2 hours
+        threshold = 0.7 * current_intensity
+        below = hourly_avg[hourly_avg["intensity_gCO2_per_kWh"] <= threshold]
+
+        recommended_hour = None
+        if not below.empty:
+            hours = sorted(below["hour"].unique())
+            for i in range(len(hours) - 1):
+                if hours[i + 1] == hours[i] + 1:
+                    recommended_hour = hours[i]
+                    break
+
+        # --- Recommendation message
+        if recommended_hour is not None:
+            start_time = f"{int(recommended_hour):02d}:00"
+            rec_text = (
+                f"💡 Carbon intensity is forecasted to fall by at least 30 % below the current level "
+                f"for two consecutive hours starting around {start_time}. "
+                f"It is recommended to shift the load to that period."
+            )
+        else:
+            rec_text = (
+                f"🌤 No significant carbon-intensity drop (>30 % for ≥2 hours) is expected today. "
+                f"The appliance can be started at any time without major emission benefits."
+            )
+
+        return rec_text
+
+    except Exception as e:
+        print("⚠️ Recommendation error:", e)
+        return "Recommendation data unavailable — please retry shortly."
+
+
+
+
+#################################### data for impact summary ##########################
+
+# Placeholder just to wire through the device/duration data 
+# ## change output IDs !!
+
+'''@app.callback(
     Output("recommendation_data", "children"),
     Input("device_dropdown", "value"),
     Input("duration_dropdown", "value")
@@ -508,7 +581,7 @@ def update_recommendation_data(device_value, duration):
     kw = float(kw_str)
     
     # Display to test it is wired through
-    return f"Device={device_name}, Load={kw}kW, Duration={duration}hrs"
+    return f"Device={device_name}, Load={kw}kW, Duration={duration}hrs"'''
 
 ######################   Run the APP     ############################################################
 
