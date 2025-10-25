@@ -147,8 +147,7 @@ app.layout = html.Div([
         ], className="feature-box"),
 
         # Weather
-        html.Div([html.P("ANALYSIS", style={"font-size": "14px"}),
-                          html.H5("Current Weather Classification"),
+        html.Div([html.H5("Current Weather Classification", style={"fontWeight": "bold"}),
                           html.Br(),
                           html.Div([radio_buttons("temperature", ["hot", "mild", "cold"], "hot")], style={"margin-bottom": "8px"}),
                           html.Div([radio_buttons("wind_speed", ["windy", "breezy", "calm"], "calm")], style={"margin-bottom": "8px"}),
@@ -157,19 +156,20 @@ app.layout = html.Div([
 
         # Recommendation
         html.Div([
-            html.H5("Recommendation"),
-            html.P(id="recommendation_data")
+            html.H5("Recommendation", style={"fontWeight": "bold"}),
+            html.Br(),
+            html.P(id="recommendation_data", style={"font-size": "20px", "whiteSpace": "normal", "width": "90%", "textAlign": "center"})
         ], className="feature-box"),
 
         # Current grid mix
         html.Div([
-            html.H5("Current Grid Mix"),
+            html.H5("Current Grid Mix", style={"fontWeight": "bold"}),
             dcc.Graph(id="grid_mix", style={"width": "100%", "height": "100%"}, config={"responsive": True})
         ], className="feature-box"),
 
         # Carbon intensity trend
         html.Div([
-            html.H5("Daily Carbon Intensity Trend"),
+            html.H5("Daily Carbon Intensity Trend", style={"fontWeight": "bold"}),
             html.P("This chart shows the typical hourly pattern of carbon intensity, "
                             "calculated from past days with weather conditions similar to today",
                             style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
@@ -178,8 +178,16 @@ app.layout = html.Div([
 
         # User impact summary
         html.Div([
-            html.H4("User Impact Summary")
-        ], className="feature-box")
+            html.H5("User Impact Summary", style={"fontWeight": "bold"}),
+            html.Br(),
+            html.P(["By shifting your behaviour, you save CO", html.Sub("2"), " equal to: "],
+                   style={"font-size": "18px", "whiteSpace": "normal", "width": "50%", "textAlign": "center"}),
+            html.Br(),
+            html.Div(id="carbon_savings", style={"font-size": "24px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+            html.Br(),
+            html.P("THANK YOU!", style={"font-size": "18px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+            html.Img(src="/assets/earth_icon.png", style={"height": "60px", "display": "block", "marginLeft": "auto", "marginRight": "auto"})
+         ], className="feature-box")
 
     ], className="grid-container"),
 
@@ -565,23 +573,39 @@ def update_recommendation_data(device_value, duration, temp_selection, wind_sele
 
 
 
-#################################### data for impact summary ##########################
-
-# Placeholder just to wire through the device/duration data 
-# ## change output IDs !!
-
-'''@app.callback(
-    Output("recommendation_data", "children"),
+#################################### User Impact Summary ##########################
+@app.callback(
+    Output("carbon_savings", "children"),
     Input("device_dropdown", "value"),
-    Input("duration_dropdown", "value")
+    Input("duration_dropdown", "value"),
+    Input("temperature", "value"),
+    Input("wind_speed", "value"),
+    Input("cloudiness", "value")
 )
-def update_recommendation_data(device_value, duration):
-    # Parse device value to extract name and kW
-    device_name, kw_str = device_value.split("|")
-    kw = float(kw_str)
-    
+def update_carbon_savings(device_value, duration, temp_selection, wind_selection, cloud_selection):
+    ts, current_intensity = get_latest_intensity()
+    df_filtered = df_weather_carbon_merged[
+        (df_weather_carbon_merged["temperature_2m_C_category"] == temp_selection) &
+        (df_weather_carbon_merged["wind_speed_10m_kmh_category"] == wind_selection) &
+        (df_weather_carbon_merged["cloud_cover_pct_category"] == cloud_selection)
+        ].sort_values("hour")
+    hourly_avg = (df_filtered.groupby("hour", as_index=False)["intensity_gCO2_per_kWh"].mean())
+    threshold = 0.7 * current_intensity
+    below = hourly_avg[hourly_avg["intensity_gCO2_per_kWh"] <= threshold]
+
+    # Parse device value to extract name and kWh
+    device_name, kwh_str = device_value.split("|")
+    kwh = float(kwh_str)
+    recommended_intensity = below["intensity_gCO2_per_kWh"].max()
+    if recommended_intensity <= current_intensity:
+        phone_charges = (current_intensity - recommended_intensity) * kwh * duration / 3.25
+        car_trips_1km = (current_intensity - recommended_intensity) * kwh * duration / 150
+        return [f"{phone_charges} phone charges", html.Br(), f"{car_trips_1km} 1km car trips"]
+    else:
+        return f"minimal for today."
+
     # Display to test it is wired through
-    return f"Device={device_name}, Load={kw}kW, Duration={duration}hrs"'''
+    # return f"Device={device_name}, Load={kwh}kWh, Duration={duration}hrs"
 
 ######################   Run the APP     ############################################################
 
