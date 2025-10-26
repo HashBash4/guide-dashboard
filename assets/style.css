@@ -1,149 +1,152 @@
 html, body {
-            height: 100%;
-            margin: 0;
-            font-family: "Arial", sans-serif;
-            background-color: #f7f9fb;
-        }
-        .main-container {
-            display: grid;
-            grid-template-rows: auto auto 1fr;
-            min-height: 100vh;
-            gap: 10px;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-        .header {
-            background: #e6f0fa;
-            border-radius: 12px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-        }
-        .device-load {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-        }
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 15px;
-            height: 100%;
-        }
-        .feature-box {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-
-
-
-        /* --- RAG Indicator Styles --- */
-        .rag-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
-        }
-
-        .rag-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .rag-dot {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-bottom: 8px;
-            box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-            transition: background-color 0.4s ease;
-        }
-
-        .feature-box {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        margin: 0;
-        padding: 0;
-
-        /* ===== HEADER BAR STYLING ===== */
-        .header-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: #f7f9fb;
-        border-bottom: 2px solid #ccc;
-        padding: 10px 25px;
-        border-radius: 6px;
-        height: 70px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-        font-family: "Segoe UI", Arial, sans-serif;
-        }
-
-        /* Left section (title + subtitle) */
-        .header-bar h1 {
-        margin: 0;
-        font-size: 30px;            /* Bigger title */
-        font-weight: 900;
-        letter-spacing: 0.5px;
-        color: #111;
-        }
-
-        .header-bar p {
-        margin: 0;
-        font-size: 17px;            /* Larger subtitle */
-        font-weight: 400;
-        color: #333;
-        }
-
-        /* Middle section (state info) */
-        .header-bar span {
-        font-size: 17px;
-        font-weight: bold;
-        }
-
-        .header-bar img {
-        height: 22px;
-        vertical-align: middle;
-        }
-
-        /* Right section (date + time) */
-        #current_date {
-        margin: 0;
-        font-size: 17px;            /* Larger date */
-        text-align: right;
-        color: #111;
-        }
-
-        #current_time {
-        margin: 0;
-        font-size: 28px;            /* Large bold time */
-        font-weight: 800;
-        text-align: right;
-        color: #111;
-        letter-spacing: 1px;
-        }
-
-
+    height: 100%;
+    margin: 0;
+    font-family: "Arial", sans-serif;
+    background-color: #f7f9fb;
 }
 
-       
+/* ================== MAIN LAYOUT ================== */
+.main-container {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    min-height: 100vh;
+    gap: 10px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* ================== HEADER BAR ================== */
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f7f9fb;
+    border-bottom: 2px solid #ccc;
+    padding: 15px 40px;          /* more vertical breathing space inside */
+    margin-bottom: 20px;         /* ⬅️ extra space below header */
+    border-radius: 6px;
+    height: 100px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.header-bar h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    color: #111;
+}
+
+.header-bar p {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 400;
+    color: #333;
+}
+
+.header-bar span {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.header-bar img {
+    height: 22px;
+    vertical-align: middle;
+}
+
+#current_date {
+    margin: 0;
+    font-size: 17px;
+    text-align: right;
+    color: #111;
+}
+
+#current_time {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    text-align: right;
+    color: #111;
+    letter-spacing: 1px;
+}
+
+/* ================== DEVICE LOAD ================== */
+.device-load {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+/* ================== GRID CONTAINER ================== */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: auto auto;
+    gap: 10px;
+    height: 100%;
+}
+
+/* ================== FEATURE BOXES ================== */
+.feature-box {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 15px 18px;           /* was 20px → slightly tighter */
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    position: relative;
+}
+
+/* Make all headers stick visually to the top */
+.feature-box h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    align-self: flex-start;      /* keep top-left alignment */
+    width: 100%;
+    text-align: center;          /* change to 'left' if you prefer */
+    font-size: 18px;             /* consistent size across all headers */
+    font-weight: 700;            /* makes it bold */
+    color: #111;                 /* dark, readable text color */
+    letter-spacing: 0.5px;       /* optional: a bit more polished look */
+}
+
+
+/* ================== RAG INDICATOR ================== */
+.rag-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.rag-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.rag-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-bottom: 8px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.4s ease;
+}
+
+/* Slight green tint for the rightmost column boxes */
+.grid-container > .feature-box:nth-child(3),
+.grid-container > .feature-box:nth-child(6) {
+    background-color: #e0d8f3;   /* soft green tint */
+}
