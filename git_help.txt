@@ -1,0 +1,4 @@
+some help scripts for git
+
+.\venv\Scripts\activate
+
