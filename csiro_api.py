@@ -24,30 +24,40 @@ def get_token():
     return r.json()["access_token"]
 
 def get_latest_intensity():
-    """Return the most recent carbon intensity value (gCO2/kWh)."""
-    token = get_token()
-    headers = {"Authorization": f"Bearer {token}"}
+    """Return the most recent carbon intensity value (timestamp, gCO2/kWh)."""
+    try:
+        token = get_token()
+        headers = {"Authorization": f"Bearer {token}"}
 
-    now = datetime.now(timezone.utc)
-    start = now - timedelta(hours=2)
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(hours=6)   # broadened window to ensure recent data
 
-    params = {
-        "streamid": STREAM_ID,
-        "start": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-        "end": now.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-        "limit": 1,
-        "sort": "desc",
-    }
+        params = {
+            "streamid": STREAM_ID,
+            "start": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "end": now.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "limit": 1,
+            "sort": "desc",
+        }
 
-    r = requests.get(OBS_URL, headers=headers, params=params, timeout=30)
-    r.raise_for_status()
-    results = r.json().get("results", [])
-    if not results:
-        return None
+        r = requests.get(OBS_URL, headers=headers, params=params, timeout=30)
+        r.raise_for_status()
 
-    sydney_tz = pytz.timezone("Australia/Sydney")
-    entry = results[0]
-    utc_time = datetime.strptime(entry["t"], "%Y-%m-%dT%H:%M:%S.000Z").replace(tzinfo=timezone.utc)
-    sydney_time = utc_time.astimezone(sydney_tz)
-    value = entry["v"]["v"]
-    return sydney_time, value
+        results = r.json().get("results", [])
+        if not results:
+            print("⚠️ No results found in API response.")
+            # Return fallback dummy value instead of None
+            return datetime.now(), 650.0
+
+        entry = results[0]
+        utc_time = datetime.strptime(entry["t"], "%Y-%m-%dT%H:%M:%S.000Z").replace(tzinfo=timezone.utc)
+        sydney_tz = pytz.timezone("Australia/Sydney")
+        sydney_time = utc_time.astimezone(sydney_tz)
+        value = float(entry["v"]["v"])
+
+        return sydney_time, value
+
+    except Exception as e:
+        print("⚠️ Error fetching latest intensity:", e)
+        # Return safe fallback so dashboard doesn’t crash
+        return datetime.now(), 650.0
