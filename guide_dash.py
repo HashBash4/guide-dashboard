@@ -250,14 +250,23 @@ def update_intensity(_):
 
         image_src = f"/assets/{image_map[color]}"
 
+        # --- Check if data is older than 4 hours ---
+        try:
+            ts_dt = pd.to_datetime(ts)
+            hours_old = (datetime.now() - ts_dt).total_seconds() / 3600
+            is_old = hours_old > 4
+        except Exception:
+            is_old = False
+
+        # --- Build UI ---
         return html.Div([
             # Top title
             html.H5(
                 "Current Carbon Intensity of Grid",
                 style={
                     "textAlign": "center",
-                    "marginBottom": "20px",    # ↓ tighter
-                    "marginTop": "5px",        # ↓ tighter
+                    "marginBottom": "20px",
+                    "marginTop": "5px",
                     "fontWeight": "bold",
                     "fontSize": "19px"
                 }
@@ -293,7 +302,7 @@ def update_intensity(_):
                     html.Img(
                         src=image_src,
                         style={
-                            "height": "120px",     # ↓ slightly reduced height
+                            "height": "120px",
                             "display": "block",
                             "margin": "0 auto"
                         }
@@ -303,29 +312,45 @@ def update_intensity(_):
                 "display": "flex",
                 "alignItems": "center",
                 "justifyContent": "center",
-                "marginBottom": "5px",        # ↓ reduced bottom gap
+                "marginBottom": "5px",
             }),
 
-            # Label + timestamp
+            # Label
             html.P(
                 f"{label}",
                 style={
                     "textAlign": "center",
-                    "marginTop": "5px",         # ↓ tighter
+                    "marginTop": "5px",
                     "marginBottom": "7px",
                     "fontWeight": "500"
                 }
             ),
-            html.P(
-                f"Last updated: {ts}",
-                style={
-                    "textAlign": "center",
-                    "fontSize": "11px",
-                    "color": "gray",
-                    "marginTop": "0"
-                }
-            )
-        ], style={"margin": "0", "padding": "0"})   # ↓ ensures box doesn’t stretch
+
+            # Timestamp + optional warning message
+            html.Div([
+                html.P(
+                    f"Last updated: {ts}",
+                    style={
+                        "textAlign": "center",
+                        "fontSize": "11px",
+                        "color": "gray",
+                        "marginTop": "0",
+                        "marginBottom": "2px"
+                    }
+                ),
+                html.Span(
+                    "⚠️ Data older than 4h — values may not reflect current grid conditions."
+                    if is_old else "",
+                    style={
+                        "display": "block",
+                        "textAlign": "center",
+                        "fontSize": "11px",
+                        "color": "#d9534f" if is_old else "gray",
+                        "fontWeight": "bold"
+                    }
+                )
+            ])
+        ], style={"margin": "0", "padding": "0"})
 
     except Exception as e:
         print("⚠️ API error:", e)
@@ -333,6 +358,7 @@ def update_intensity(_):
             "Data unavailable — retrying in 5 min",
             style={"color": "gray"}
         )
+
 
 ######################### Daily Carbon Intensity Trend ##########################
 df_carbon = pd.read_csv("historic_carbon_intensity_data.csv")
@@ -529,11 +555,11 @@ def update_recommendation_data(device_value, duration, temp_selection, wind_sele
 
     try:
         # --- Get current time and intensity
-        # ts, current_intensity = get_latest_intensity()
+        ts, current_intensity = get_latest_intensity()
 
         # testing (hardcoded)
-        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        current_intensity = 10015  # 👈 use a realistic value, e.g. 615 (not 6150)
+        #ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #current_intensity = 10015  # 👈 use a realistic value, e.g. 615 (not 6150)
 
         now = datetime.now()
         current_hour = now.hour
@@ -613,7 +639,7 @@ def update_recommendation_data(device_value, duration, temp_selection, wind_sele
 
 
 
-#################################### User Impact Summary ##########################
+#################################### User Impact Sumary ##########################
 @app.callback(
     Output("carbon_savings", "children"),
     Input("device_dropdown", "value"),
@@ -646,6 +672,7 @@ def update_carbon_savings(device_value, duration, temp_selection, wind_selection
 
     # Display to test it is wired through
     # return f"Device={device_name}, Load={kwh}kWh, Duration={duration}hrs"
+
 
 ######################   Run the APP     ############################################################
 
