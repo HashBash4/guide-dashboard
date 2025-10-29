@@ -11,15 +11,11 @@ from utils.rag_helpers import get_rag_color_label, rag_display
 from openelectricity_api import get_electricity_mix
 from datetime import datetime
 import dash_bootstrap_components as dbc
-
-
-
+import requests
 
 ##############################   API REQUESTS   ###############################
 
-# get_latest_intensity is imported from csiro_api.py)
-
-
+# get_latest_intensity is imported from csiro_api.py
 
 ############################   LAYOUT   #########################################
 
@@ -29,14 +25,14 @@ def radio_buttons(_id, options, default):
     return html.Div(
         dbc.RadioItems(
             id=_id,
-            options=[{"label": o.capitalize(), "value": o} for o in options],
+            options=[{"label": o.capitalize(), "value": o, "disabled": True} for o in options],
             value=default,
             inline=True,
             inputClassName="btn-check",
             inputCheckedClassName="btn-check",
             labelClassName="btn btn-outline-secondary me-0",
             labelCheckedClassName="btn btn-primary me-0",
-            labelStyle={"width": "110px", "text-align": "center", "fontSize": "14px"}),
+            labelStyle={"width": "108px", "text-align": "center", "fontSize": "14px"}),
         className="btn-group", role="group")
 
 app.layout = html.Div([
@@ -147,45 +143,47 @@ app.layout = html.Div([
         ], className="feature-box"),
 
         # Weather
-        html.Div([html.H5("Current Weather Classification", style={"fontWeight": "bold"}),
+        html.Div([html.H5("Current Weather Classification", style={"fontWeight": "bold", "fontFamily": "Arial"}),
                           html.Br(),
                           html.Div([radio_buttons("temperature", ["hot", "mild", "cold"], "hot")], style={"margin-bottom": "8px"}),
                           html.Div([radio_buttons("wind_speed", ["windy", "breezy", "calm"], "calm")], style={"margin-bottom": "8px"}),
-                          html.Div([radio_buttons("cloudiness", ["clear", "partly cloudy", "overcast"], "partly cloudy")], style={"margin-bottom": "8px"})
+                          html.Div([radio_buttons("cloudiness", ["clear", "partly cloudy", "overcast"], "partly cloudy")], style={"margin-bottom": "8px"}),
+                          dcc.Interval(id="weather-refresh", interval=10*60*1000, n_intervals=0)
                   ], className="feature-box"),
 
         # Recommendation
         html.Div([
-            html.H5("Recommendation", style={"fontWeight": "bold"}),
+            html.H5("Recommendation", style={"fontWeight": "bold", "fontFamily": "Arial"}),
             html.Br(),
             html.P(id="recommendation_data", style={"font-size": "20px", "whiteSpace": "normal", "width": "90%", "textAlign": "center"})
         ], className="feature-box"),
 
         # Current grid mix
         html.Div([
-            html.H5("Current Grid Mix", style={"fontWeight": "bold"}),
+            html.H5("Current Grid Mix", style={"fontWeight": "bold", "fontFamily": "Arial"}),
             dcc.Graph(id="grid_mix", style={"width": "100%", "height": "100%"}, config={"responsive": True})
         ], className="feature-box"),
 
         # Carbon intensity trend
         html.Div([
-            html.H5("Daily Carbon Intensity Trend", style={"fontWeight": "bold"}),
+            html.H5("Daily Carbon Intensity Trend", style={"fontWeight": "bold", "fontFamily": "Arial"}),
             html.P("This chart shows the typical hourly pattern of carbon intensity, "
                             "calculated from past days with weather conditions similar to today",
-                            style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+                            style={"font-size": "12px", "whiteSpace": "normal", "width": "60%", "textAlign": "center", "fontFamily": "Arial"}),
             dcc.Graph(id="line_graph", style={"height": "300px", "width": "90%"})
         ], className="feature-box"),
 
         # User impact summary
         html.Div([
-            html.H5("User Impact Summary", style={"fontWeight": "bold"}),
+            html.H5("User Impact Summary", style={"fontWeight": "bold", "fontFamily": "Arial"}),
             html.Br(),
             html.P(["By shifting your behaviour, you save CO", html.Sub("2"), " equal to: "],
-                   style={"font-size": "18px", "whiteSpace": "normal", "width": "50%", "textAlign": "center"}),
+                   style={"font-size": "18px", "whiteSpace": "normal", "width": "100%", "textAlign": "center", "fontFamily": "Arial"}),
             html.Br(),
-            html.Div(id="carbon_savings", style={"font-size": "24px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+            html.Div(id="carbon_savings", style={"font-size": "24px", "whiteSpace": "normal", "width": "60%", "textAlign": "center", "fontFamily": "Arial"}),
             html.Br(),
-            html.P("THANK YOU!", style={"font-size": "18px", "whiteSpace": "normal", "width": "60%", "textAlign": "center"}),
+            html.Br(),
+            html.P("THANK YOU!", style={"font-size": "18px", "whiteSpace": "normal", "width": "60%", "textAlign": "center", "fontFamily": "Arial"}),
             html.Img(src="/assets/earth_icon.png", style={"height": "60px", "display": "block", "marginLeft": "auto", "marginRight": "auto"})
          ], className="feature-box")
 
@@ -195,8 +193,6 @@ app.layout = html.Div([
     dcc.Interval(id="refresh", interval=5*60*1000, n_intervals=0),
     dcc.Store(id="recommendation_data_store")
 ], className="main-container")
-
-
 
 ############################################################################
 ###################   CALLBACKS   #########################################
@@ -268,7 +264,8 @@ def update_intensity(_):
                     "marginBottom": "20px",
                     "marginTop": "5px",
                     "fontWeight": "bold",
-                    "fontSize": "19px"
+                    "fontSize": "19px",
+                    "fontFamily": "Arial"
                 }
             ),
 
@@ -393,6 +390,49 @@ df_weather_carbon_merged["cloud_cover_pct_category"] = (df_weather_carbon_merged
 
 # df_weather_carbon_merged.to_csv("historic_weather_carbon_data_merged.csv", index=False)
 
+temp_q1, temp_q2 = df_weather_carbon_merged["temperature_2m_C"].quantile([1/3, 2/3]).tolist()
+wind_q1, wind_q2 = df_weather_carbon_merged["wind_speed_10m_kmh"].quantile([1/3, 2/3]).tolist()
+cloud_q1, cloud_q2 = df_weather_carbon_merged["cloud_cover_pct"].quantile([1/3, 2/3]).tolist()
+
+def _classify(v, q1, q2, labels):
+    if v <= q1: return labels[0]
+    if v <= q2: return labels[1]
+    return labels[2]
+
+def _current_categories():
+    r = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={
+            "latitude": -33.8688, "longitude": 151.2093,
+            "current": ["temperature_2m", "wind_speed_10m", "cloud_cover"],
+            "timezone": "Australia/Sydney"
+        },
+        timeout=30
+    )
+    r.raise_for_status()
+    cur = r.json()["current"]
+    t = cur["temperature_2m"]
+    w = cur["wind_speed_10m"] * 3.6  # m/s -> km/h
+    c = cur["cloud_cover"]
+    temp_sel = _classify(t, temp_q1,  temp_q2,  ("cold", "mild", "hot"))
+    wind_sel = _classify(w, wind_q1,  wind_q2,  ("calm", "breezy", "windy"))
+    cloud_sel = _classify(c, cloud_q1, cloud_q2, ("clear", "partly cloudy", "overcast"))
+    return temp_sel, wind_sel, cloud_sel
+
+# automatically set radio button values based on live weather data
+@app.callback(
+    Output("temperature", "value"),
+    Output("wind_speed", "value"),
+    Output("cloudiness", "value"),
+    Input("weather-refresh", "n_intervals"),
+    prevent_initial_call=False
+)
+def set_radios_from_live(_):
+    try:
+        return _current_categories()
+    except Exception:
+        return "mild", "breezy", "partly cloudy"
+
 @app.callback(
     Output("line_graph", "figure"),
     Input("temperature", "value"),
@@ -417,7 +457,7 @@ def update_line_graph(temp_selection, wind_selection, cloud_selection):
     fig_line_graph.update_layout(
         template="plotly_white",
         xaxis_title="Hour of Day",
-        yaxis_title="Average Carbon Intensity (gCO2/kWh)",
+        yaxis_title="Average Carbon Intensity (gCO₂/kWh)",
         xaxis_title_font=dict(size=10),
         yaxis_title_font=dict(size=10),
         hovermode="x unified",
@@ -637,47 +677,56 @@ def update_recommendation_data(device_value, duration, temp_selection, wind_sele
         print("⚠️ Recommendation error:", e)
         return "Recommendation data unavailable — please retry shortly.", {"shift_needed": None, "recommended_hour": None}
 
-
-
-#################################### User Impact Sumary ##########################
+#################################### User Impact Summary ##########################
 @app.callback(
     Output("carbon_savings", "children"),
+    Input("recommendation_data_store", "data"),
     Input("device_dropdown", "value"),
     Input("duration_dropdown", "value"),
     Input("temperature", "value"),
     Input("wind_speed", "value"),
     Input("cloudiness", "value")
 )
-def update_carbon_savings(device_value, duration, temp_selection, wind_selection, cloud_selection):
+def update_carbon_savings(recommendation_data, device_value, duration, temp_selection, wind_selection, cloud_selection):
+    if recommendation_data is None:
+        raise PreventUpdate
+
+    shift_needed = recommendation_data.get("shift_needed")
+    recommended_hour = recommendation_data.get("recommended_hour")
+
+    if not shift_needed:
+        return "No load shift detected - no additional savings."
+
+    device_name, kwh_str = device_value.split("|")
+    kwh = float(kwh_str)
     ts, current_intensity = get_latest_intensity()
+
     df_filtered = df_weather_carbon_merged[
         (df_weather_carbon_merged["temperature_2m_C_category"] == temp_selection) &
         (df_weather_carbon_merged["wind_speed_10m_kmh_category"] == wind_selection) &
         (df_weather_carbon_merged["cloud_cover_pct_category"] == cloud_selection)
         ].sort_values("hour")
+
     hourly_avg = (df_filtered.groupby("hour", as_index=False)["intensity_gCO2_per_kWh"].mean())
-    threshold = 0.7 * current_intensity
-    below = hourly_avg[hourly_avg["intensity_gCO2_per_kWh"] <= threshold]
 
-    # Parse device value to extract name and kWh
-    device_name, kwh_str = device_value.split("|")
-    kwh = float(kwh_str)
-    recommended_intensity = below["intensity_gCO2_per_kWh"].max()
-    if recommended_intensity <= current_intensity:
-        phone_charges = (current_intensity - recommended_intensity) * kwh * duration / 3.25
-        car_trips_1km = (current_intensity - recommended_intensity) * kwh * duration / 150
-        return [f"{phone_charges} phone charges", html.Br(), f"{car_trips_1km} 1km car trips"]
-    else:
-        return f"minimal for today."
+    recommended_intensity = hourly_avg.loc[hourly_avg["hour"] == recommended_hour, "intensity_gCO2_per_kWh"].iloc[0]
 
-    # Display to test it is wired through
-    # return f"Device={device_name}, Load={kwh}kWh, Duration={duration}hrs"
+    phone_charges = (current_intensity - recommended_intensity) * kwh * duration / 3.25
+    car_trips_1km = (current_intensity - recommended_intensity) * kwh * duration / 193.7
 
+    return [
+        html.Div([
+            html.Img(src="/assets/cell-phone.png", style={"height": "30px", "marginRight": "30px"}),
+            f"{round(phone_charges)} phone charges"
+        ], style={"display": "flex", "alignItems": "center"}),
+
+        html.Div([
+            html.Img(src="/assets/car.png", style={"height": "40px", "marginRight": "20px"}),
+            f"{round(car_trips_1km)} km of car travel"
+        ], style={"display": "flex", "alignItems": "center"})
+    ]
 
 ######################   Run the APP     ############################################################
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
