@@ -594,7 +594,8 @@ def update_grid_mix(_):
                 gridwidth=0.5
             ),
             yaxis=dict(
-                tickfont=dict(size=12, family="Arial")
+                tickfont=dict(size=12, family="Arial"),
+                ticksuffix="  "  # Add space after labels
             ),
             autosize=True  # Allow the figure to resize dynamically
         )
