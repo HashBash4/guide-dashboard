@@ -495,6 +495,16 @@ def update_grid_mix(_):
                     if timestamp is None:
                         timestamp = payload.get("timestamp", "")
         
+        # Format timestamp to be more user-friendly
+        if timestamp:
+            try:
+                # Parse ISO format timestamp and format without timezone
+                ts_dt = pd.to_datetime(timestamp)
+                timestamp = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                # If parsing fails, keep original timestamp
+                pass
+        
         # Override point for no data
         #rows = []
 
