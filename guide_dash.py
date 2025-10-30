@@ -238,6 +238,15 @@ def update_load_summary(device_value, duration):
 def update_intensity(_):
     try:
         ts, val = get_latest_intensity()
+        
+        # Format timestamp to remove milliseconds
+        try:
+            ts_dt = pd.to_datetime(ts)
+            ts = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            # If formatting fails, keep original timestamp
+            pass
+        
         color, label = get_rag_color_label(val)
 
         image_map = {
