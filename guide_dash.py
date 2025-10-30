@@ -195,7 +195,7 @@ app.layout = html.Div([
 
     # 🔁 Auto-refresh every 5 minutes
     dcc.Interval(id="refresh", interval=5*60*1000, n_intervals=0),
-    dcc.Store(id="recommendation_data_store")
+    dcc.Store(id="recommendation_data_store") # Support passing data between Recommendation and User Impact Summary
 ], className="main-container")
 
 ############################################################################
@@ -238,6 +238,15 @@ def update_load_summary(device_value, duration):
 def update_intensity(_):
     try:
         ts, val = get_latest_intensity()
+        
+        # Format timestamp to remove milliseconds
+        try:
+            ts_dt = pd.to_datetime(ts)
+            ts = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            # If formatting fails, keep original timestamp
+            pass
+        
         color, label = get_rag_color_label(val)
 
         image_map = {
@@ -361,7 +370,11 @@ def update_intensity(_):
         )
 
 
-######################### Daily Carbon Intensity Trend ##########################
+######################### Current Weather and Daily Carbon Intensity Trend ##########################
+
+# Load offline historical carbon intensity and weather data. 
+# Needed for classifying the current weather and showing historical carbon intensity.
+
 df_carbon = pd.read_csv("historic_carbon_intensity_data.csv")
 df_weather = pd.read_csv("historic_weather_data_sydney.csv")
 
@@ -398,6 +411,9 @@ temp_q1, temp_q2 = df_weather_carbon_merged["temperature_2m_C"].quantile([1/3, 2
 wind_q1, wind_q2 = df_weather_carbon_merged["wind_speed_10m_kmh"].quantile([1/3, 2/3]).tolist()
 cloud_q1, cloud_q2 = df_weather_carbon_merged["cloud_cover_pct"].quantile([1/3, 2/3]).tolist()
 
+
+# Load real-time weather data and classify into categories
+
 def _classify(v, q1, q2, labels):
     if v <= q1: return labels[0]
     if v <= q2: return labels[1]
@@ -418,9 +434,17 @@ def _current_categories():
     t = cur["temperature_2m"]
     w = cur["wind_speed_10m"] * 3.6  # m/s -> km/h
     c = cur["cloud_cover"]
+
+    # For testing: override point for current weather conditions
+    #print(f"Quantiles. Temperature: {temp_q1}, {temp_q2}, Wind: {wind_q1}, {wind_q2}, Cloud: {cloud_q1}, {cloud_q2}")
+    #t = 5.0
+    #c = 100.0
+    #w = 10.0
+    
     temp_sel = _classify(t, temp_q1,  temp_q2,  ("cold", "mild", "hot"))
     wind_sel = _classify(w, wind_q1,  wind_q2,  ("calm", "breezy", "windy"))
     cloud_sel = _classify(c, cloud_q1, cloud_q2, ("clear", "partly cloudy", "overcast"))
+    
     return temp_sel, wind_sel, cloud_sel
 
 # automatically set radio button values based on live weather data
@@ -437,12 +461,15 @@ def set_radios_from_live(_):
     except Exception:
         return "mild", "breezy", "partly cloudy"
 
+
+# Draw daily intensity trend graph
+
 @app.callback(
     Output("line_graph", "figure"),
     Input("temperature", "value"),
     Input("wind_speed", "value"),
     Input("cloudiness", "value"))
-def update_line_graph(temp_selection, wind_selection, cloud_selection):
+def update_carbon_intensity_trend(temp_selection, wind_selection, cloud_selection):
     df_weather_carbon_merged_filtered = df_weather_carbon_merged[
         (df_weather_carbon_merged["temperature_2m_C_category"] == temp_selection) &
         (df_weather_carbon_merged["wind_speed_10m_kmh_category"] == wind_selection) &
@@ -451,12 +478,28 @@ def update_line_graph(temp_selection, wind_selection, cloud_selection):
     df_weather_carbon_merged_filtered_average = (
         df_weather_carbon_merged_filtered.groupby("hour", as_index=False)["intensity_gCO2_per_kWh"].mean()
         .rename(columns={"intensity_gCO2_per_kWh": "intensity_gCO2_per_kWh_average"}))
+    
+    # Create custom hover text, store in the dataframe
+    df_weather_carbon_merged_filtered_average["hover_text"] = df_weather_carbon_merged_filtered_average.apply(
+        lambda row: f"{int(row['hour']):02d}:00: {row['intensity_gCO2_per_kWh_average']:.0f}g CO₂/kWh",
+        axis=1
+    )
 
     if df_weather_carbon_merged_filtered_average.empty:
         fig_line_graph = px.line(title=f"No data for: {temp_selection}, {wind_selection}, {cloud_selection}")
     else:
-        fig_line_graph = px.line(df_weather_carbon_merged_filtered_average,
-        x="hour", y="intensity_gCO2_per_kWh_average", markers=True)
+        fig_line_graph = px.line(
+            df_weather_carbon_merged_filtered_average,
+            x="hour", 
+            y="intensity_gCO2_per_kWh_average", 
+            markers=True,
+            custom_data=["hover_text"]
+        )
+        
+        # Use hover template to show only custom hover text
+        fig_line_graph.update_traces(
+            hovertemplate="%{customdata[0]}"
+        )
 
     fig_line_graph.update_layout(
         template="plotly_white",

@@ -4,6 +4,10 @@ import requests
 import pandas as pd
 from datetime import date, datetime, timedelta
 
+# Purpose of this file is to fetch historic weather data from Open-Meteo API and save to CSV
+# It can be run once to get data for a date range, and the resulting CSV can be used for analysis
+# It will be run manually as needed to update the data
+
 LAT, LON = -33.8688, 151.2093
 TIMEZONE = "Australia/Sydney"
 START_DATE, END_DATE = date(2023, 10, 13), date(2025, 10, 12)
