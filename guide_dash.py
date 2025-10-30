@@ -478,12 +478,28 @@ def update_carbon_intensity_trend(temp_selection, wind_selection, cloud_selectio
     df_weather_carbon_merged_filtered_average = (
         df_weather_carbon_merged_filtered.groupby("hour", as_index=False)["intensity_gCO2_per_kWh"].mean()
         .rename(columns={"intensity_gCO2_per_kWh": "intensity_gCO2_per_kWh_average"}))
+    
+    # Create custom hover text, store in the dataframe
+    df_weather_carbon_merged_filtered_average["hover_text"] = df_weather_carbon_merged_filtered_average.apply(
+        lambda row: f"{int(row['hour']):02d}:00: {row['intensity_gCO2_per_kWh_average']:.0f}g CO₂/kWh",
+        axis=1
+    )
 
     if df_weather_carbon_merged_filtered_average.empty:
         fig_line_graph = px.line(title=f"No data for: {temp_selection}, {wind_selection}, {cloud_selection}")
     else:
-        fig_line_graph = px.line(df_weather_carbon_merged_filtered_average,
-        x="hour", y="intensity_gCO2_per_kWh_average", markers=True)
+        fig_line_graph = px.line(
+            df_weather_carbon_merged_filtered_average,
+            x="hour", 
+            y="intensity_gCO2_per_kWh_average", 
+            markers=True,
+            custom_data=["hover_text"]
+        )
+        
+        # Use hover template
+        fig_line_graph.update_traces(
+            hovertemplate="%{customdata[0]}"
+        )
 
     fig_line_graph.update_layout(
         template="plotly_white",
