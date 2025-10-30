@@ -604,6 +604,14 @@ def update_grid_mix(_):
         fig.update_xaxes(automargin=True)
         fig.update_yaxes(automargin=True)
 
+        # --- Check if data is older than 4 hours ---
+        try:
+            ts_dt = pd.to_datetime(timestamp)
+            hours_old = (datetime.now() - ts_dt).total_seconds() / 3600
+            is_old = hours_old > 4
+        except Exception:
+            is_old = False
+        
         # Return a Div containing the graph and timestamp
         return html.Div([
             dcc.Graph(
@@ -611,17 +619,30 @@ def update_grid_mix(_):
                 style={"width": "100%", "flex": "1"},
                 config={"responsive": True}
             ),
-            html.P(
-                f"Last updated: {timestamp}" if timestamp else "Last updated: N/A",
-                style={
-                    "textAlign": "center",
-                    "fontSize": "11px",
-                    "color": "gray",
-                    "marginTop": "5px",
-                    "marginBottom": "0",
-                    "flexShrink": "0"
-                }
-            )
+            html.Div([
+                html.P(
+                    f"Last updated: {timestamp}" if timestamp else "Last updated: N/A",
+                    style={
+                        "textAlign": "center",
+                        "fontSize": "11px",
+                        "color": "gray",
+                        "marginTop": "5px",
+                        "marginBottom": "2px",
+                        "flexShrink": "0"
+                    }
+                ),
+                html.Span(
+                    "⚠️ Data older than 4h — values may not reflect current grid generation."
+                    if is_old else "",
+                    style={
+                        "display": "block",
+                        "textAlign": "center",
+                        "fontSize": "11px",
+                        "color": "#d9534f" if is_old else "gray",
+                        "fontWeight": "bold"
+                    }
+                )
+            ])
         ], style={"width": "100%", "height": "100%", "display": "flex", "flexDirection": "column"})
 
     except Exception as e:
