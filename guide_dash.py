@@ -552,6 +552,12 @@ def update_grid_mix(_):
             axis=1
         )
         
+        # Create custom hover text
+        df["hover_text"] = df.apply(
+            lambda row: f"{row['fueltech_display']}: {row['value']:,.0f} / {total_power:,.0f} MW, {row['percentage']:.1f}%",
+            axis=1
+        )
+        
         fig = px.bar(
             df,
             x="value",
@@ -560,6 +566,7 @@ def update_grid_mix(_):
             color="fueltech_display",
             color_discrete_map=color_map,
             text="text_label",
+            hover_data={"hover_text": True, "value": False, "fueltech_display": False},
             title=""
         )
         
@@ -568,7 +575,8 @@ def update_grid_mix(_):
             textposition="inside",
             textfont=dict(size=11, color="white", family="Arial"),
             insidetextanchor="end",  # Align text to the right (end) of the bar
-            textangle=0  # Keep text horizontal
+            textangle=0,  # Keep text horizontal
+            hovertemplate="%{customdata[0]}<extra></extra>"  # Show only custom hover text
         )
         
         fig.update_layout(
