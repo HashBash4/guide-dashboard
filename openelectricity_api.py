@@ -49,9 +49,13 @@ def get_electricity_mix():
     # For each fuel type, we want the last data object (most recent)
     payload = r.json()
     data = payload.get("data", [])
+    
     if not data:
-        print("No valid data in API response")
+        print("⚠️ get_electricity_mix() no data")
         return None
+
+    # Override point for no data from API call
+    #return None
 
     # We only want the first element in the data array
     results = data[0]["results"]
@@ -67,7 +71,7 @@ def get_electricity_mix():
     # Sample generation by source
     # {'power_battery_charging': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 78.1957}, 'power_battery_discharging': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 308.2482}, 'power_bioenergy': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 80.1613}, 'power_coal': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 13649.986}, 'power_distillate': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 0.0}, 'power_gas': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 546.0728}, 'power_hydro': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 2294.083}, 'power_pumps': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 0.0}, 'power_solar': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 2315.1695}, 'power_wind': {'timestamp': '2025-10-16T17:20:00+10:00', 'value': 6504.6333}}
 
-    print(f"get_electricity_mix success, {len(generation_by_source)} fuel types")
+    #print(f"get_electricity_mix success, {generation_by_source}")
     return generation_by_source
 
 # Run a test

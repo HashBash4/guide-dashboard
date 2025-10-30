@@ -161,7 +161,11 @@ app.layout = html.Div([
         # Current grid mix
         html.Div([
             html.H5("Current Grid Mix", style={"fontWeight": "bold", "fontFamily": "Arial"}),
-            dcc.Graph(id="grid_mix", style={"width": "100%", "height": "100%"}, config={"responsive": True})
+            html.Div(
+                id="grid_mix_container",
+                style={"width": "100%", "flex": "1", "display": "flex", "flexDirection": "column"},
+                children=[html.P("Loading...", style={"textAlign": "center", "color": "gray", "marginTop": "50px"})]
+            )
         ], className="feature-box"),
 
         # Carbon intensity trend
@@ -468,105 +472,192 @@ def update_line_graph(temp_selection, wind_selection, cloud_selection):
 ######################### Grid mix ##########################
 
 @app.callback(
-    Output("grid_mix", "figure"),
+    Output("grid_mix_container", "children"),
     Input("refresh", "n_intervals")
 )
 def update_grid_mix(_):
-    print("↻ Grid mix refresh triggered")
+    try:
+        # Fetch
+        mix = get_electricity_mix() or {}   # expected: { "power_coal": {"timestamp": "...", "value": 123.4}, ... }
+        
+        DESIRED_FUELS = {"wind", "solar", "hydro", "coal", "gas"}
+        rows = []
+        timestamp = None
+        
+        for name, payload in mix.items():
+            # "power_solar" -> "solar"
+            label = name.removeprefix("power_")
+            if label in DESIRED_FUELS:
+                val = payload.get("value")
+                if val is not None:
+                    rows.append({"fueltech": label, "value": float(val)})
+                    # Capture timestamp from first valid entry
+                    if timestamp is None:
+                        timestamp = payload.get("timestamp", "")
+        
+        # Format timestamp to be more user-friendly
+        if timestamp:
+            try:
+                # Parse ISO format timestamp and format without timezone
+                ts_dt = pd.to_datetime(timestamp)
+                timestamp = ts_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                # If parsing fails, keep original timestamp
+                pass
+        
+        # Override point for no data
+        #rows = []
 
-    # Fetch
-    mix = get_electricity_mix() or {}   # expected: { "power_coal": {"timestamp": "...", "value": 123.4}, ... }
+        if not rows:
+            # No data state - return text message instead of empty chart
+            return html.Div([
+                html.P(
+                    "Unable to load data",
+                    style={
+                        "color": "gray",
+                        "fontSize": "16px",
+                        "textAlign": "center",
+                        "marginTop": "50px"
+                    }
+                )
+            ])
 
-    DESIRED_FUELS = {"wind", "solar", "hydro", "coal", "gas"}
-    rows = []
-    for name, payload in mix.items():
-        # "power_solar" -> "solar"
-        label = name.removeprefix("power_")
-        if label in DESIRED_FUELS:
-            val = payload.get("value")
-            if val is not None:
-                rows.append({"fueltech": label, "value": float(val)})
-
-    if not rows:
-        empty = pd.DataFrame({ "fueltech": [], "value": [] })
-        return px.bar(
-            empty, x="value", y="fueltech", orientation="h", title="No data"
+        # Build DF
+        df = pd.DataFrame(rows)
+        
+        # Calculate total and percentages
+        total_power = df["value"].sum()
+        df["percentage"] = (df["value"] / total_power * 100).round(1)
+        
+        # Define custom order: renewables first, then fossil fuels
+        fuel_order = ["solar", "wind", "hydro", "coal", "gas"]
+        df["fueltech"] = pd.Categorical(df["fueltech"], categories=fuel_order, ordered=True)
+        df = df.sort_values("fueltech").reset_index(drop=True)
+        
+        # Title case the labels
+        df["fueltech_display"] = df["fueltech"].str.title()
+        
+        # Define colors: green shades for renewables, grays/browns for fossil fuels
+        color_map = {
+            "Solar": "#FDB462",    # Orange/yellow for solar
+            "Wind": "#80B1D3",     # Light blue for wind
+            "Hydro": "#8DD3C7",    # Teal for hydro
+            "Coal": "#999999",     # Dark gray for coal
+            "Gas": "#BEBADA"       # Purple-gray for gas
+        }
+        
+        # Create text labels showing MW and percentage
+        df["text_label"] = df.apply(
+            lambda row: f"{row['percentage']:.1f}%",
+            axis=1
         )
+        
+        # Create custom hover text
+        df["hover_text"] = df.apply(
+            lambda row: f"{row['fueltech_display']}: {row['value']:,.0f} / {total_power:,.0f} MW, {row['percentage']:.1f}%",
+            axis=1
+        )
+        
+        fig = px.bar(
+            df,
+            x="value",
+            y="fueltech_display",
+            orientation="h",
+            color="fueltech_display",
+            color_discrete_map=color_map,
+            text="text_label",
+            hover_data={"hover_text": True, "value": False, "fueltech_display": False},
+            title=""
+        )
+        
+        # Update layout for cleaner appearance
+        fig.update_traces(
+            textposition="inside",
+            textfont=dict(size=11, color="white", family="Arial"),
+            insidetextanchor="end",  # Align text to the right (end) of the bar
+            textangle=0,  # Keep text horizontal
+            hovertemplate="%{customdata[0]}<extra></extra>"  # Show only custom hover text
+        )
+        
+        fig.update_layout(
+            showlegend=False,
+            xaxis_title="Megawatts (MW)",
+            yaxis_title="",
+            xaxis_title_font=dict(size=10),
+            height=300,
+            margin=dict(l=10, r=10, t=10, b=30),  # Extra bottom margin for timestamp
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            xaxis=dict(
+                showgrid=True,
+                gridcolor="lightgray",
+                gridwidth=0.5
+            ),
+            yaxis=dict(
+                tickfont=dict(size=12, family="Arial"),
+                ticksuffix="  "  # Add space after labels
+            ),
+            autosize=True  # Allow the figure to resize dynamically
+        )
+        
+        # Remove any fixed width constraints
+        fig.update_xaxes(automargin=True)
+        fig.update_yaxes(automargin=True)
 
-    # Build DF
-    df = pd.DataFrame(rows)
-    
-    # Calculate total and percentages
-    total_power = df["value"].sum()
-    df["percentage"] = (df["value"] / total_power * 100).round(1)
-    
-    # Define custom order: renewables first, then fossil fuels
-    fuel_order = ["solar", "wind", "hydro", "coal", "gas"]
-    df["fueltech"] = pd.Categorical(df["fueltech"], categories=fuel_order, ordered=True)
-    df = df.sort_values("fueltech").reset_index(drop=True)
-    
-    # Title case the labels
-    df["fueltech_display"] = df["fueltech"].str.title()
-    
-    # Define colors: green shades for renewables, grays/browns for fossil fuels
-    color_map = {
-        "Solar": "#FDB462",    # Orange/yellow for solar
-        "Wind": "#80B1D3",     # Light blue for wind
-        "Hydro": "#8DD3C7",    # Teal for hydro
-        "Coal": "#999999",     # Dark gray for coal
-        "Gas": "#BEBADA"       # Purple-gray for gas
-    }
-    
-    # Create text labels showing MW and percentage
-    df["text_label"] = df.apply(
-        lambda row: f"{row['percentage']:.1f}%", # Removed MW value: row['value']:.0f} MW
-        axis=1
-    )
-    
-    fig = px.bar(
-        df,
-        x="value",
-        y="fueltech_display",
-        orientation="h",
-        color="fueltech_display",
-        color_discrete_map=color_map,
-        text="text_label",
-        title=""
-    )
-    
-    # Update layout for cleaner appearance
-    fig.update_traces(
-        textposition="inside",
-        textfont=dict(size=11, color="white", family="Arial"),
-        insidetextanchor="end",  # Align text to the right (end) of the bar
-        textangle=0  # Keep text horizontal
-    )
-    
-    fig.update_layout(
-        showlegend=False,
-        xaxis_title="Megawatts (MW)",
-        yaxis_title="",
-        xaxis_title_font=dict(size=10),
-        height=300,
-        margin=dict(l=10, r=10, t=10, b=10),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="lightgray",
-            gridwidth=0.5
-        ),
-        yaxis=dict(
-            tickfont=dict(size=12, family="Arial")
-        ),
-        autosize=True  # Allow the figure to resize dynamically
-    )
-    
-    # Remove any fixed width constraints
-    fig.update_xaxes(automargin=True)
-    fig.update_yaxes(automargin=True)
+        # --- Check if data is older than 4 hours ---
+        try:
+            ts_dt = pd.to_datetime(timestamp)
+            hours_old = (datetime.now() - ts_dt).total_seconds() / 3600
+            is_old = hours_old > 4
+        except Exception:
+            is_old = False
+        
+        # Return a Div containing the graph and timestamp
+        return html.Div([
+            dcc.Graph(
+                figure=fig,
+                style={"width": "100%", "flex": "1"},
+                config={"responsive": True}
+            ),
+            html.Div([
+                html.P(
+                    f"Last updated: {timestamp}" if timestamp else "Last updated: N/A",
+                    style={
+                        "textAlign": "center",
+                        "fontSize": "11px",
+                        "color": "gray",
+                        "marginTop": "5px",
+                        "marginBottom": "2px",
+                        "flexShrink": "0"
+                    }
+                ),
+                html.Span(
+                    "⚠️ Data older than 4h — values may not reflect current grid generation."
+                    if is_old else "",
+                    style={
+                        "display": "block",
+                        "textAlign": "center",
+                        "fontSize": "11px",
+                        "color": "#d9534f" if is_old else "gray",
+                        "fontWeight": "bold"
+                    }
+                )
+            ])
+        ], style={"width": "100%", "height": "100%", "display": "flex", "flexDirection": "column"})
 
-    return fig
+    except Exception as e:
+        print("⚠️ Grid mix API error:", e)
+        return html.Div([
+            html.P(
+                "Unable to load data",
+                style={
+                    "color": "gray",
+                    "fontSize": "16px",
+                    "textAlign": "center",
+                    "marginTop": "50px"
+                }
+            )
+        ])
 
 ######################### Recommendation Data Callback ##########################
 
