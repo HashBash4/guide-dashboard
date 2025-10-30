@@ -195,7 +195,7 @@ app.layout = html.Div([
 
     # 🔁 Auto-refresh every 5 minutes
     dcc.Interval(id="refresh", interval=5*60*1000, n_intervals=0),
-    dcc.Store(id="recommendation_data_store")
+    dcc.Store(id="recommendation_data_store") # Support passing data between Recommendation and User Impact Summary
 ], className="main-container")
 
 ############################################################################
@@ -496,7 +496,7 @@ def update_carbon_intensity_trend(temp_selection, wind_selection, cloud_selectio
             custom_data=["hover_text"]
         )
         
-        # Use hover template
+        # Use hover template to show only custom hover text
         fig_line_graph.update_traces(
             hovertemplate="%{customdata[0]}"
         )
