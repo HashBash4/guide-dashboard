@@ -1,6 +1,6 @@
 # this is the main file to run the app
 
-###########################   IMPORTS   #########################################
+###########################   IMPORTS   ##############################################
 
 import dash
 from dash import Dash, html, dcc, Input, Output
@@ -13,11 +13,11 @@ from datetime import datetime
 import dash_bootstrap_components as dbc
 import requests
 
-##############################   API REQUESTS   ###############################
+##############################   API REQUESTS   #####################################
 
 # get_latest_intensity is imported from csiro_api.py
 
-############################   LAYOUT   #########################################
+############################   LAYOUT   #############################################
 
 app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -74,7 +74,7 @@ app.layout = html.Div([
     ], className="header-bar"),
 
 
-    # 🔁 Add this interval for the live clock ⏱️
+    #  Add this interval for the live clock ⏱️
     dcc.Interval(id="clock", interval=1000, n_intervals=0),
 
 
@@ -193,10 +193,13 @@ app.layout = html.Div([
 
     ], className="grid-container"),
 
-    # 🔁 Auto-refresh every 5 minutes
+    #  Auto-refresh every 5 minutes
     dcc.Interval(id="refresh", interval=5*60*1000, n_intervals=0),
     dcc.Store(id="recommendation_data_store") # Support passing data between Recommendation and User Impact Summary
 ], className="main-container")
+
+
+
 
 ############################################################################
 ###################   CALLBACKS   #########################################
@@ -215,7 +218,7 @@ def update_clock(_):
     time_str = now.strftime("%H:%M:%S")
     return date_str, time_str
 
-######################### Load Summary Callback ##########################
+######################### Load Summary Callback #########################################
 
 @app.callback(
     Output("load_summary", "children"),
@@ -231,6 +234,7 @@ def update_load_summary(device_value, duration):
     return f"Representative load: {kw}kW, {duration}hrs"
 
 ######################### RAG Indicator and current Carbon Intensity ##########################
+
 @app.callback(
     Output("rag_indicator", "children"),
     Input("refresh", "n_intervals")
@@ -267,7 +271,7 @@ def update_intensity(_):
         except Exception:
             is_old = False
 
-        # --- Build UI ---
+        # 
         return html.Div([
             # Top title
             html.H5(
