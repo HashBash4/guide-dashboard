@@ -386,7 +386,7 @@ df_carbon["datetime"] = (pd.to_datetime(df_carbon["datetime"].astype(str).str.st
                         errors="coerce", utc=True).dt.tz_convert("Australia/Sydney").dt.tz_localize(None))
 df_carbon["datetime_local"] = df_carbon["datetime"].dt.strftime("%Y-%m-%d %H:%M:%S")
 df_weather["datetime_local"] = pd.to_datetime(df_weather["datetime_local"].astype(str).str.strip(),
-                            errors="coerce", dayfirst=True).dt.strftime("%Y-%m-%d %H:%M:%S")
+                            errors="coerce").dt.strftime("%Y-%m-%d %H:%M:%S")
 
 df_weather_carbon_merged = df_weather.merge(df_carbon[["datetime_local", "intensity_gCO2_per_kWh"]], on="datetime_local", how="left")
 df_weather_carbon_merged["intensity_gCO2_per_kWh"] = df_weather_carbon_merged["intensity_gCO2_per_kWh"].fillna("NaN")
